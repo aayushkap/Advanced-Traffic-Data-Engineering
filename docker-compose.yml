@@ -1,0 +1,402 @@
+services:
+  # Kafka services
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - confluent
+
+  broker:
+    image: confluentinc/cp-server:7.4.0
+    hostname: broker
+    container_name: broker
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:29092
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: "false"
+      CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
+    networks:
+      - confluent
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-init:
+    image: python:3.11-slim
+    depends_on:
+      broker:
+        condition: service_healthy
+    networks:
+      - confluent
+    volumes:
+      - ./kafka:/init-kafka
+      - ./data:/init-kafka/data
+    command: >
+      sh -c "echo 'Kafka is online.' && pip install kafka-python && \
+      if [ ! -f /init-kafka/init-kafka.py ]; then \
+        echo 'print(\"Hello, Kafka!\")' > /init-kafka/init-kafka.py; \
+      fi && python /init-kafka/init-kafka.py"
+
+    
+
+  # schema-registry:
+  #   image: confluentinc/cp-schema-registry:7.4.0
+  #   hostname: schema-registry
+  #   container_name: schema-registry
+  #   depends_on:
+  #     broker:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
+  #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
+  #     SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+  #   networks:
+  #     - confluent
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+
+  # control-center:
+  #   image: confluentinc/cp-enterprise-control-center:7.4.0
+  #   hostname: control-center
+  #   container_name: control-center
+  #   depends_on:
+  #     broker:
+  #       condition: service_healthy
+  #     schema-registry:
+  #       condition: service_healthy
+  #   ports:
+  #     - "9021:9021"
+  #   environment:
+  #     CONTROL_CENTER_BOOTSTRAP_SERVERS: "broker:29092"
+  #     CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+  #     CONTROL_CENTER_REPLICATION_FACTOR: 1
+  #     CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+  #     CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+  #     CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+  #     CONFLIENT_METRICS_ENABLE: "false"
+  #     PORT: 9021
+  #   networks:
+  #     - confluent
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9021/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+
+  # Airflow services
+  webserver:
+    image: apache/airflow:2.6.0-python3.9
+    command: webserver
+    entrypoint: ["/opt/airflow/script/entrypoint.sh"]
+    depends_on:
+      - postgres
+    environment:
+      - EXECUTOR=Celery
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      interval: 100s
+      timeout: 100s
+      retries: 3
+    networks:
+      - confluent
+
+  scheduler:
+    image: apache/airflow:2.6.0-python3.9
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./airflow:/opt/airflow/airflow
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    environment:
+      - EXECUTOR=Celery
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=this_is_a_very_secured_key
+    command: bash -c "pip install -r ./requirements.txt && python airflow/wait-for-webserver.py && airflow db upgrade && airflow scheduler" # RUN WEBSERVER AND SCHEDULER SIMULATENOUSLY, AND PUT A WAIT FOR IT HERE FOR WEBSERVER TO BE READY, ONLY AFTER WHICH EXECUTE SCHEDULER
+    networks:
+      - confluent
+
+  worker:
+    image: apache/airflow:2.6.0-python3.9
+    depends_on:
+      - redis
+      - postgres
+      - webserver
+      - scheduler
+    environment:
+      - EXECUTOR=Celery
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
+      - BROKER_URL=redis://redis:6379/0
+    command: bash -c "pip install -r ./requirements.txt && airflow celery worker"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    networks:
+      - confluent
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow 
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - confluent
+
+  # postgres2:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_USER=anotheruser
+  #     - POSTGRES_PASSWORD=anotherpassword
+  #     - POSTGRES_DB=trafficdb
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
+  #   logging:
+  #     options:
+  #       max-size: 10m
+  #       max-file: "3"
+  #   networks:
+  #     - confluent
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - confluent
+
+  # Flink services
+  flink-jobmanager:
+    build:
+      context: ./pyflink
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+      - "22:22"
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 2048m
+        jobmanager.cpu.cores: 4
+    command: jobmanager
+    depends_on:
+      - zookeeper
+      - broker
+    volumes:
+      - ./pyflink/usr_jobs:/opt/flink/usr_jobs
+    networks:
+      - confluent
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  flink-taskmanager:
+    build:
+      context: ./pyflink
+      dockerfile: Dockerfile
+    command: taskmanager
+    scale: 1
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        taskmanager.memory.process.size: 2048m
+        taskmanager.cpu.cores: 4
+    volumes:
+      - ./pyflink/usr_jobs:/opt/flink/usr_jobs
+    networks:
+      - confluent
+
+  # flink-job-test:
+  #   image: alpine:3.14
+  #   depends_on:
+  #     flink-jobmanager:
+  #       condition: service_healthy
+  #   networks:
+  #     - confluent
+  #   command: >
+  #     sh -c "
+  #     apk add --no-cache openssh-client wget &&
+  #     wget https://dl-cdn.alpinelinux.org/alpine/edge/testing/x86_64/sshpass-1.09-r1.apk &&
+  #     apk add --allow-untrusted sshpass-1.09-r1.apk &&
+  #     sshpass -p 'root' ssh -o StrictHostKeyChecking=no root@flink-jobmanager 'flink run -py /opt/flink/usr_jobs/doris_traffic_sink.py' &&
+  #     echo 'Job submitted successfully via SSH';
+  #     "
+
+
+  # flink-job-submit:
+  #   build:
+  #     context: ./pyflink
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     flink-jobmanager:
+  #       condition: service_healthy
+  #   environment:
+  #     - |
+  #       FLINK_PROPERTIES=
+  #       jobmanager.rpc.address: flink-jobmanager
+  #       jobmanger.rpc.port: 6123
+  #   networks:
+  #     - confluent
+  #   command: >
+  #     sh -c "
+  #     until curl -s http://flink-jobmanager:8081/taskmanagers | jq '.taskmanagers | length' | grep -q '^1$'; do
+  #       echo 'Waiting for TaskManager to register...';
+  #       sleep 5;
+  #     done;
+  #     echo 'TaskManager registered. Submitting Flink job...';
+  #     flink run -py /opt/flink/usr_jobs/doris_traffic_sink.py"
+  #   volumes:
+  #     - ./pyflink/usr_jobs:/opt/flink/usr_jobs
+
+  # Doris services
+  doris:
+    image: yagagagaga/doris-standalone
+    ports:
+      - "8030:8030"
+      - "8040:8040"
+      - "9030:9030"
+    networks:
+      - confluent
+    healthcheck:
+      test: ["CMD", "mysql", "-uroot", "-h127.0.0.1", "-P9030", "-e", "SELECT 1;"]
+      interval: 15s
+      retries: 10
+
+  doris-init:
+    image: mysql:5.7
+    depends_on:
+      doris:
+        condition: service_healthy
+    networks:
+      - confluent
+    volumes:
+      - ./init-doris.sql:/init-doris.sql
+    command: >
+      sh -c "
+      while ! mysql -uroot -h doris -P9030 -e 'SHOW BACKENDS;' | grep -q 'true'; do
+        echo 'Waiting for Doris BE to come online...';
+        sleep 5;
+      done;
+      echo 'Doris BE is online.';
+      while ! mysql -uroot -h doris -P9030 -e 'SELECT 1;' > /dev/null 2>&1; do
+        echo 'Waiting for Doris to be ready...';
+        sleep 5;
+      done;
+      mysql -uroot -h doris -P9030 < /init-doris.sql;
+      echo 'Initialization complete.'"
+
+  pathway:
+    build:
+      context: ./iceberg
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    networks:
+      - confluent
+
+  postgres-iceberg:
+    image: postgres:15
+    container_name: iceberg-postgres
+    environment:
+      POSTGRES_USER: iceberg
+      POSTGRES_PASSWORD: iceberg
+      POSTGRES_DB: iceberg
+    ports:
+      - "5432:5432"
+    volumes:
+      - iceberg_pg_data:/var/lib/postgresql/data
+    networks:
+      - confluent
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: iceberg-minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - iceberg_minio_data:/data
+    networks:
+      - confluent
+
+volumes:
+  iceberg_pg_data:
+  iceberg_minio_data:
+networks:
+  confluent:
+    driver: bridge
