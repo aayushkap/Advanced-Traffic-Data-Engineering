@@ -1,3 +1,4 @@
+version: "3.8"
 services:
   # Kafka services
   zookeeper:
@@ -142,7 +143,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./airflow/requirements.txt:/opt/airflow/requirements.txt
     ports:
       - "8080:8080"
     healthcheck:
@@ -159,7 +160,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./airflow:/opt/airflow/airflow
-      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./airflow/requirements.txt:/opt/airflow/requirements.txt
     environment:
       - EXECUTOR=Celery
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
@@ -185,11 +186,12 @@ services:
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
       - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
       - BROKER_URL=redis://redis:6379/0
-    command: bash -c "pip install -r ./requirements.txt && airflow celery worker"
+    command: bash -c "pip install -r ./requirements.txt && python wait-for-webserver.py && airflow celery worker"
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
-      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./airflow/wait-for-webserver.py:/opt/airflow/wait-for-webserver.py
+      - ./airflow/requirements.txt:/opt/airflow/requirements.txt
     networks:
       - confluent
 
@@ -205,23 +207,6 @@ services:
         max-file: "3"
     networks:
       - confluent
-
-  # postgres2:
-  #   image: postgres:15
-  #   environment:
-  #     - POSTGRES_USER=anotheruser
-  #     - POSTGRES_PASSWORD=anotherpassword
-  #     - POSTGRES_DB=trafficdb
-  #   ports:
-  #     - "5433:5432"
-  #   volumes:
-  #     - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
-  #   logging:
-  #     options:
-  #       max-size: 10m
-  #       max-file: "3"
-  #   networks:
-  #     - confluent
 
   redis:
     image: redis:latest
@@ -277,47 +262,6 @@ services:
     networks:
       - confluent
 
-  # flink-job-test:
-  #   image: alpine:3.14
-  #   depends_on:
-  #     flink-jobmanager:
-  #       condition: service_healthy
-  #   networks:
-  #     - confluent
-  #   command: >
-  #     sh -c "
-  #     apk add --no-cache openssh-client wget &&
-  #     wget https://dl-cdn.alpinelinux.org/alpine/edge/testing/x86_64/sshpass-1.09-r1.apk &&
-  #     apk add --allow-untrusted sshpass-1.09-r1.apk &&
-  #     sshpass -p 'root' ssh -o StrictHostKeyChecking=no root@flink-jobmanager 'flink run -py /opt/flink/usr_jobs/doris_traffic_sink.py' &&
-  #     echo 'Job submitted successfully via SSH';
-  #     "
-
-
-  # flink-job-submit:
-  #   build:
-  #     context: ./pyflink
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     flink-jobmanager:
-  #       condition: service_healthy
-  #   environment:
-  #     - |
-  #       FLINK_PROPERTIES=
-  #       jobmanager.rpc.address: flink-jobmanager
-  #       jobmanger.rpc.port: 6123
-  #   networks:
-  #     - confluent
-  #   command: >
-  #     sh -c "
-  #     until curl -s http://flink-jobmanager:8081/taskmanagers | jq '.taskmanagers | length' | grep -q '^1$'; do
-  #       echo 'Waiting for TaskManager to register...';
-  #       sleep 5;
-  #     done;
-  #     echo 'TaskManager registered. Submitting Flink job...';
-  #     flink run -py /opt/flink/usr_jobs/doris_traffic_sink.py"
-  #   volumes:
-  #     - ./pyflink/usr_jobs:/opt/flink/usr_jobs
 
   # Doris services
   doris:
@@ -341,7 +285,7 @@ services:
     networks:
       - confluent
     volumes:
-      - ./init-doris.sql:/init-doris.sql
+      - ./doris/init-doris.sql:/init-doris.sql
     command: >
       sh -c "
       while ! mysql -uroot -h doris -P9030 -e 'SHOW BACKENDS;' | grep -q 'true'; do
@@ -397,6 +341,7 @@ services:
 volumes:
   iceberg_pg_data:
   iceberg_minio_data:
+
 networks:
   confluent:
     driver: bridge

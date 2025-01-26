@@ -12,8 +12,8 @@ from uuid import uuid4
 # Kafka and DAG configuration
 KAFKA_BOOTSTRAP_SERVER = 'broker:29092'
 DATA_PATH = '/opt/airflow/data'
-NUM_RECORDS = 800
-STREM_SLEEP_TIME = 0.1
+NUM_RECORDS = 1000
+STREM_SLEEP_TIME = 0.5
 
 
 default_args = {

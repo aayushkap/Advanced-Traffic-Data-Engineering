@@ -46,8 +46,7 @@ SELECT
 FROM 
     traffic_data
 WHERE 
-    insert_time IS NOT NULL 
-    AND insert_time >= '2025-01-02 08:40:00';
+    insert_time IS NOT NULL ;
 
 SELECT insert_time, COUNT(*) AS total_vehicles
 FROM traffic_data

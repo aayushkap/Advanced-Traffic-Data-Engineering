@@ -23,7 +23,7 @@ MINIO_S3_PATH = f"s3://{MINIO_BUCKET}/"
 MINIO_ACCESS_KEY = "minio"
 MINIO_SECRET_KEY = "minio123"
 MINIO_ENDPOINT_URL = "http://iceberg-minio:9000"
-PARTITION_SIZE = 200
+PARTITION_SIZE = 1000
 
 # Logging setup
 logger = logging.getLogger(__name__)

@@ -2,11 +2,10 @@ apache-airflow[celery]
 Werkzeug==2.2.3
 SQLAlchemy==1.4.49
 redis
-apache-airflow-providers-sqlite==3.4.3
-apache-airflow-providers-apache-spark
+# apache-airflow-providers-sqlite==3.4.3
+# apache-airflow-providers-apache-spark #Test, comment out and check
 xmltodict
 kafka-python==2.0.2
 pyflink
-kafka-python
 pyiceberg
 pydantic==1.10.12

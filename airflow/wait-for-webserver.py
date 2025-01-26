@@ -22,4 +22,5 @@ def wait_for_webserver():
     raise Exception("Webserver did not become ready in time!")
 
 if __name__ == "__main__":
+    print("Checking if webserver is ready...")
     wait_for_webserver()
