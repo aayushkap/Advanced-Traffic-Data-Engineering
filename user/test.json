@@ -1,0 +1,52 @@
+{
+  "Al_Haram_Road": {
+    "vehicle_count": {
+      "base_sql": "SELECT COUNT(*) AS Total_Vehicles, Vehicle_Type FROM traffic_data WHERE Road = '{road}'",
+      "filters": [
+        {
+          "name": "vehicle_type",
+          "condition": "Vehicle_Type = '{vehicle_type}'"
+        }
+      ],
+      "group_by": "GROUP BY Vehicle_Type"
+    },
+    "traffic_volume": {
+      "base_sql": "SELECT DATE_FORMAT(ts, '{time_format}') AS Time_Period, COUNT(*) AS Total_Vehicles FROM traffic_data WHERE Road = '{road}'",
+      "filters": [
+        {
+          "name": "vehicle_type",
+          "condition": "Vehicle_Type = '{vehicle_type}'"
+        },
+        {
+          "name": "speeding",
+          "condition": "speeding <> ''"
+        }
+      ],
+      "group_by": "GROUP BY Time_Period"
+    },
+    "average_speed": {
+      "base_sql": "SELECT AVG(velocity) AS Average_Speed, vehicle_type FROM traffic_data WHERE road = '{road}'",
+      "filters": [
+        {
+          "name": "vehicle_type",
+          "condition": "vehicle_type = '{vehicle_type}'"
+        },
+        {
+          "name": "speeding",
+          "condition": "speeding <> ''"
+        }
+      ],
+      "group_by": "GROUP BY vehicle_type ORDER BY vehicle_type"
+    },
+    "lane_utilization": {
+      "base_sql": "SELECT lane, COUNT(*) AS vehicle_count FROM traffic_data WHERE road = '{road}'",
+      "filters": [
+        {
+          "name": "vehicle_type",
+          "condition": "vehicle_type = '{vehicle_type}'"
+        }
+      ],
+      "group_by": "GROUP BY lane ORDER BY lane"
+    }
+  }
+}

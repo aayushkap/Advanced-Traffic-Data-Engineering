@@ -12,8 +12,8 @@ from uuid import uuid4
 # Kafka and DAG configuration
 KAFKA_BOOTSTRAP_SERVER = 'broker:29092'
 DATA_PATH = '/opt/airflow/data'
-NUM_RECORDS = 1000
-STREM_SLEEP_TIME = 0.5
+NUM_RECORDS = 1000 # Per road
+STREM_SLEEP_TIME = 0.25
 
 
 default_args = {
@@ -65,8 +65,8 @@ def get_data_instance(region: str, road: str):
     speed_limit = road_info['car_speed_limit'] if vehicle_type == 'Car' else road_info['truck_speed_limit']
 
     # Simulate realistic speed variations
-    base_speed_variation = random.uniform(-20, 5)
-    rush_hour_factor = -5 if is_rush_hour else random.uniform(-5, 0)
+    base_speed_variation = random.uniform(-30, 5)
+    rush_hour_factor = -10 if is_rush_hour else random.uniform(-5, 0)
     lane_factor = (road_info['lanes'] - lane) * random.uniform(0.5, 1.0)
 
     vehicle_speed = max(0, round(speed_limit + base_speed_variation + rush_hour_factor + lane_factor))
@@ -132,7 +132,9 @@ with DAG(
     'dynamic_kafka_streaming',
     schedule_interval=None,
     default_args=default_args,
-    catchup=False
+    catchup=False,
+    concurrency=4, # Limits to 4 concurrent tasks (streams)
+    max_active_runs=4,
 ) as dag:
 
     create_topics_task = PythonOperator(

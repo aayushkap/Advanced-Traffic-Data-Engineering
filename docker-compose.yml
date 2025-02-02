@@ -134,6 +134,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
       - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
     logging:
       options:
@@ -166,6 +167,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
       - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=this_is_a_very_secured_key
     command: bash -c "pip install -r ./requirements.txt && python airflow/wait-for-webserver.py && airflow db upgrade && airflow scheduler" # RUN WEBSERVER AND SCHEDULER SIMULATENOUSLY, AND PUT A WAIT FOR IT HERE FOR WEBSERVER TO BE READY, ONLY AFTER WHICH EXECUTE SCHEDULER
@@ -184,6 +186,31 @@ services:
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
+      - BROKER_URL=redis://redis:6379/0
+    command: bash -c "pip install -r ./requirements.txt && python wait-for-webserver.py && airflow celery worker"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./airflow/wait-for-webserver.py:/opt/airflow/wait-for-webserver.py
+      - ./airflow/requirements.txt:/opt/airflow/requirements.txt
+    networks:
+      - confluent
+
+  worker_2:
+    image: apache/airflow:2.6.0-python3.9
+    depends_on:
+      - redis
+      - postgres
+      - webserver
+      - scheduler
+    environment:
+      - EXECUTOR=Celery
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
       - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres:5432/airflow
       - BROKER_URL=redis://redis:6379/0
     command: bash -c "pip install -r ./requirements.txt && python wait-for-webserver.py && airflow celery worker"
@@ -228,7 +255,7 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        jobmanager.memory.process.size: 2048m
+        jobmanager.memory.process.size: 4096m
         jobmanager.cpu.cores: 4
     command: jobmanager
     depends_on:
@@ -254,8 +281,8 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 2
-        taskmanager.memory.process.size: 2048m
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 4096m
         taskmanager.cpu.cores: 4
     volumes:
       - ./pyflink/usr_jobs:/opt/flink/usr_jobs
@@ -300,6 +327,26 @@ services:
       mysql -uroot -h doris -P9030 < /init-doris.sql;
       echo 'Initialization complete.'"
 
+  # User Services
+
+  user-redis:
+    image: redis:latest
+    container_name: user-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - confluent
+
+  doris-to-redis-sync:
+    build:
+      context: ./user
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    networks:
+      - confluent
+      
+  # Iceberg services 
   pathway:
     build:
       context: ./iceberg

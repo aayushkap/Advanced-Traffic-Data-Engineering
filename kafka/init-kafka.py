@@ -14,11 +14,12 @@ except FileNotFoundError as e:
 
 def create_kafka_topics():
     """
-    Create Kafka topics dynamically for each road.
+    Create Kafka topics dynamically for each road with increased partitions.
     """
     admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER)
+
     topics = [
-        NewTopic(name=f"{region}_{road.replace(' ', '')}", num_partitions=1, replication_factor=1)
+        NewTopic(name=f"{region}_{road.replace(' ', '')}", num_partitions=4, replication_factor=1)  # Increase partitions
         for region, roads in road_data.items()
         for road in roads.keys()
     ]
@@ -28,6 +29,8 @@ def create_kafka_topics():
         print(f"Kafka topics created: {[topic.name for topic in topics]}")
     except Exception as e:
         print(f"Failed to create Kafka topics: {e}")
+
+    admin_client.close()  # Always close the client after execution
 
 if __name__ == '__main__':
     create_kafka_topics()

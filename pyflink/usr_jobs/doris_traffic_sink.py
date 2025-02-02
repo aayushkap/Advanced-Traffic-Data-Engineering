@@ -84,7 +84,7 @@ def configure_doris_sink(sql_dml: str, type_info: Types) -> JdbcSink:
         .with_password("")
         .build(),
         JdbcExecutionOptions.builder()
-        .with_batch_interval_ms(500) # Max time to wait before sending a batch, even if the batch size is not reached
+        .with_batch_interval_ms(200) # Max time to wait before sending a batch, even if the batch size is not reached
         .with_batch_size(1000) # Max number of records to send in a batch
         .with_max_retries(5)
         .build(),
@@ -151,12 +151,14 @@ def main() -> None:
     logger.info("Creating data stream from Kafka topics")
     data_stream = env.from_source(
         kafka_source, WatermarkStrategy.no_watermarks(), "Dynamic Kafka Topics"
-    )
+    ).set_parallelism(4)
+
+    env.set_parallelism(4)
 
     transformed_data = data_stream.map(parse_data, output_type=TYPE_INFO)
 
     logger.info("Adding sink to Doris")
-    transformed_data.add_sink(doris_sink)
+    transformed_data.add_sink(doris_sink).set_parallelism(4)
 
     env.execute("Flink Doris Sink with Dynamic Kafka Topics")
 
