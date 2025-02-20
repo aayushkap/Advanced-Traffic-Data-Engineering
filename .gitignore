@@ -1,1 +1,27 @@
 .venv/
+
+__pycache__/
+
+# Logs
+vehicle-dashboard/logs
+vehicle-dashboard/*.log
+vehicle-dashboard/npm-debug.log*
+vehicle-dashboard/yarn-debug.log*
+vehicle-dashboard/yarn-error.log*
+vehicle-dashboard/pnpm-debug.log*
+vehicle-dashboard/lerna-debug.log*
+
+vehicle-dashboard/node_modules
+vehicle-dashboard/dist
+vehicle-dashboard/dist-ssr
+vehicle-dashboard/*.local
+
+vehicle-dashboard/.vscode/*
+vehicle-dashboard/!.vscode/extensions.json
+vehicle-dashboard/.idea
+vehicle-dashboard/.DS_Store
+vehicle-dashboard/*.suo
+vehicle-dashboard/*.ntvs*
+vehicle-dashboard/*.njsproj
+vehicle-dashboard/*.sln
+vehicle-dashboard/*.sw?

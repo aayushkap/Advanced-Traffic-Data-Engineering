@@ -19,12 +19,3 @@ DISTRIBUTED BY HASH(region) BUCKETS 3
 PROPERTIES (
     "replication_allocation" = "tag.location.default: 1"
 );
-
-CREATE MATERIALIZED VIEW vehicle_count AS
-SELECT Vehicle_Type, COUNT(*) AS Total_Vehicles FROM traffic_data GROUP BY Vehicle_Type;
-
-CREATE MATERIALIZED VIEW traffic_volume AS
-SELECT DATE_FORMAT(ts, '%Y-%m-%d %H:%i') AS Time_Per_Minute, COUNT(*) AS Total_Vehicles
-FROM traffic_data
-GROUP BY Time_Per_Minute
-ORDER BY Time_Per_Minute;

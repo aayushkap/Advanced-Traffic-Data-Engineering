@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root {
+  --primary: #2c3e50;
+  --secondary: #3498db;
+  --accent: #e74c3c;
+  --text: #d3e4f5;
+  --subtext: #bdc3c7;
+  --background: #282828;
+  --sidebar-width: 250px;
+}
+
+* {
+  margin: 0;  
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  background-color: var(--primary);
+  padding: 1rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0.1rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.menu-item {
+  margin-bottom: 0.5rem;
+}
+
+.menu-button {
+  width: 100%;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.menu-button:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.menu-button.active {
+  background: var(--secondary);
+  margin-bottom: 0.2rem;
+}
+
+.menu-icon {
+  font-size: 1.2rem;
+}
+
+.chevron {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+.submenu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  padding-left: 1.5rem;
+}
+
+.submenu.open {
+  max-height: 200px;
+}
+
+.submenu-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.5rem;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  margin-bottom: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.submenu-item:hover {
+  color: white;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+}
+
+.submenu-item.active {
+  color: white;
+  font-weight: bold;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+}
+
+.submenu-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.submenu-icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 1rem;
+  background: var(--background);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.main-content h1 {
+  color: var(--text);
+  font-weight: 200;
+  font-size: 3rem;
+  width: fit-content;
+  position: relative;
+}
+
+.main-content h2 {
+  color: var(--text);
+  font-weight: 400;
+  letter-spacing: 0.01rem;
+  font-size: 1.5rem;
+  position: relative;
+  width: fit-content;
+}
+
+.main-content h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0rem;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--subtext);
+  border-radius: 2px;
+}
+
+.main-content p {
+  color: var(--subtext);
+  font-weight: 600;
+  font-size: larger;
+  margin-bottom: 2rem;
+}

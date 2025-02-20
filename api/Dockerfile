@@ -13,4 +13,4 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . . 
 
 # Command to run the script
-CMD ["python", "doris_to_redis_sync.py"]
+CMD ["python", "api.py"]

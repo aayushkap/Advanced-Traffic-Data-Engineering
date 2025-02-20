@@ -1,0 +1,28 @@
+.divider {
+    width: 100%;
+    padding: 1rem;
+    margin: 15px 0;
+    border-radius: 1rem;
+    border: 1px solid rgba(200,200,200, 0.15);
+    color: var(--text);
+}
+
+.cols {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    gap: 1rem;
+}
+
+.title-card {
+    width: 60%;
+}
+
+.left {
+    flex: 2;
+}
+
+.right {
+    flex: 3; /* Takes 25% */
+}

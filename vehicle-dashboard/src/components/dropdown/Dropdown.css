@@ -1,0 +1,114 @@
+/* Custom Dropdown Container */
+.custom-dropdown {
+    position: relative;
+    width: 150px;
+    font-size: 0.95rem;
+    color: #ccc;
+    text-transform: capitalize;
+  }
+
+  .blackBg{
+    background-color: var(--background)
+  }
+
+  .whiteBg {
+    color: #444;
+    background-color: #fff
+  }
+  
+  .dropdown-header {
+    padding: 0.3rem 0.5rem;
+    border: 2px solid #ccc;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+  }
+  
+  .dropdown-header:hover,
+  .dropdown-header:focus {
+    border-color: #444;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Custom Arrow Icon */
+  .arrow {
+    display: inline-block;
+    margin-left: 0.5rem;
+    border: solid #ccc;
+    border-width: 0 2px 2px 0;
+    padding: 3px;
+    transform: rotate(45deg);
+    transition: transform 0.3s ease;
+  }
+  
+  .arrow.open {
+    transform: rotate(-135deg) translateY(-2px);
+  }
+  
+  /* Dropdown List */
+  .dropdown-list {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background-color: var(--bg, #fff);
+    border: 2px solid #ccc;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: dropdown 0.3s ease forwards;
+    z-index: 1000;
+  }
+  
+  /* Dropdown list “drop-down” animation */
+  @keyframes dropdown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Dropdown List Items */
+  .dropdown-list-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: #444;
+    background-color: var(--bg, #fff);
+    transition: background 1s ease;
+  }
+  
+  .dropdown-list-item:hover {
+    background: linear-gradient(to right, #FF5CCC44, #DC52BF22);
+  }
+
+  .average-speed-info-container {
+   width: 50%;
+  }
+
+  .average-speed-info {
+    width: 100%;
+    min-width: 120px !important;
+    text-wrap: none;
+    text-align: center;
+    font-size: 1.rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0px;
+    line-height: 1.2rem;
+    color: #cccccc44 !important;
+  }
+
+  .average-speed-info span {
+    display: block;
+    padding: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  
