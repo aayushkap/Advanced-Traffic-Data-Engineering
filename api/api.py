@@ -35,6 +35,7 @@ def format_metadata(data: dict) -> dict:
         region = item.get('region')
         road = item.get('road', '')
         # Convert underscores to spaces
+        region = region.replace('_', ' ')
         road_formatted = road.replace('_', ' ')
         # If the region already exists, add the road if it's not already there
         if region in menus:
@@ -54,7 +55,6 @@ def post_process_result(result: dict, road:str) -> dict:
     # --- Process Traffic Volume ---
     traffic_volume_data = {}
     for record in result.get('total_speeding_vehicles', []):
-        print(record)
         time = record["time_per"]
         if time not in traffic_volume_data:
             traffic_volume_data[time] = {"time_per": time, "car": 0, "truck": 0, "violations": 0}
@@ -151,7 +151,6 @@ async def query_traffic_data(request: QueryRequest):
     API endpoint to build and execute traffic data queries.
     """
     # Construct query key
-    print(request)
     request.road =request.road.replace(" ", "_")
     query_key_parts = [f"{request.road}", f"time_granularity={request.time_granularity}", f"history={request.history}"]
 
@@ -163,9 +162,7 @@ async def query_traffic_data(request: QueryRequest):
 
     # Execute query
     result = query_builder.query_orchestrator(query_key)
-    print("Preprocessed result: ", result)
     processed = post_process_result(result, request.road)
-    print(processed)
     return {"result": processed}
 
 @app.get("/metadata")

@@ -60,10 +60,10 @@ function AverageSpeed({ trafficData }) {
         radius: "100%",
         min: 0,
         max: Math.ceil((gaugeMax + 0) / 10) * 10,
-        splitNumber: 5,
+        splitNumber: Math.ceil((gaugeMax + 0) / 10),
         axisLine: {
           lineStyle: {
-            width: 25,
+            width: 20,
             color: [
               [safeRatio * 0.8, "#16dADEBB"],
               [safeRatio, "#DD8800"],
@@ -81,12 +81,12 @@ function AverageSpeed({ trafficData }) {
           length: 8,
           lineStyle: {
             color: "#DDD",
-            width: 2,
+            width: 1,
           },
         },
         splitLine: {
-          distance: -25,
-          length: 25,
+          distance: -20,
+          length: 20,
           lineStyle: {
             color: "#DDD",
             width: 2,

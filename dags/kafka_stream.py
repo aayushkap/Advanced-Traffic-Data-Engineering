@@ -8,11 +8,12 @@ import logging
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka import KafkaProducer
 from uuid import uuid4
+import numpy as np
 
 # Kafka and DAG configuration
 KAFKA_BOOTSTRAP_SERVER = 'broker:29092'
 DATA_PATH = '/opt/airflow/data'
-NUM_RECORDS = 2500 # Per road
+NUM_RECORDS = 2500
 STREM_SLEEP_TIME = 0.1
 
 
@@ -65,7 +66,7 @@ def get_data_instance(region: str, road: str):
     speed_limit = road_info['car_speed_limit'] if vehicle_type == 'Car' else road_info['truck_speed_limit']
 
     # Simulate realistic speed variations
-    base_speed_variation = random.uniform(-15, 10)
+    base_speed_variation = random.uniform(-15, 5)
     rush_hour_factor = -10 if is_rush_hour else random.uniform(-5, 0)
     lane_factor = (road_info['lanes'] - lane) * random.uniform(0.5, 1.0)
 
@@ -105,21 +106,40 @@ def create_kafka_topics():
         logging.error(f"Failed to create Kafka topics: {e}")
 
 
-def stream_to_kafka(region, road, num_records=10):
-    """
-    Stream a fixed number of traffic data records to a Kafka topic.
-    """
+def stream_to_kafka(region, road):
     topic_name = f"{region}_{road.replace(' ', '')}"
     producer = KafkaProducer(bootstrap_servers=[KAFKA_BOOTSTRAP_SERVER], max_block_ms=5000)
     logging.info(f"Started streaming to Kafka topic: {topic_name}")
 
-    for _ in range(num_records):
+    # Get road details including the capacity parameter
+    road_info = road_data.get(region, {}).get(road, {})
+    road_capacity = road_info.get('capacity', NUM_RECORDS)
+    
+    # Use the capacity parameter to vary the number of records
+    num_records = np.random.poisson(lam=road_capacity)
+
+    # Calculate the maximum capacity across all roads
+    max_capacity = max(
+        r.get('capacity', NUM_RECORDS)
+        for region_val in road_data.values()
+        for r in region_val.values()
+    )
+    # Normalize the current road's capacity relative to the maximum
+    normalized_capacity = road_capacity / max_capacity if max_capacity else 1
+
+    records_sent = 0
+    while records_sent < num_records:
         data_instance = get_data_instance(region, road)
         if data_instance:
+            # For busier roads (higher capacity), the delay is shorter.
+            # Here, STREM_SLEEP_TIME is the base delay and the extra delay is scaled down
+            delay = STREM_SLEEP_TIME + random.uniform(0, (1 - normalized_capacity) * 0.45)
+            time.sleep(delay)
             producer.send(topic_name, json.dumps(data_instance).encode('utf-8'))
-            time.sleep(STREM_SLEEP_TIME)
-
+            records_sent += 1
+    producer.flush()  # Ensure all records are sent
     logging.info(f"Finished streaming {num_records} records to Kafka topic: {topic_name}")
+
 
 def submit_flink_job():
     """
@@ -130,11 +150,12 @@ def submit_flink_job():
 # DAG definition
 with DAG(
     'dynamic_kafka_streaming',
-    schedule_interval=None,
+    schedule_interval="*/5 * * * *",  # Run every 5 minutes
     default_args=default_args,
     catchup=False,
     concurrency=4, # Limits to 4 concurrent tasks (streams)
-    max_active_runs=4,
+    max_active_runs=1, # Ensures only one DAG run at a time
+    description='Dynamically stream traffic data to Kafka topics.',
 ) as dag:
 
     create_topics_task = PythonOperator(
@@ -152,6 +173,6 @@ with DAG(
             stream_task = PythonOperator(
                 task_id=f'stream_to_kafka_{region}_{road.replace(" ", "_")}',
                 python_callable=stream_to_kafka,
-                op_args=[region, road, NUM_RECORDS],
+                op_args=[region, road],
             )
             create_topics_task >> stream_task >> end_task

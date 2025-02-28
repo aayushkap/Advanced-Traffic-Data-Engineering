@@ -39,7 +39,7 @@ function Dashboard({ road, region }) {
 
     // If live update is enabled, schedule the API call every 5 seconds.
     if (liveUpdate) {
-      intervalId = setInterval(fetchTrafficData, 5000);
+      intervalId = setInterval(fetchTrafficData, 3000);
     }
 
     return () => {

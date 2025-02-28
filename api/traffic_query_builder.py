@@ -38,7 +38,7 @@ class TrafficDataQueryBuilder:
         """
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute("SELECT * from road_metadata")
+                cursor.execute("SELECT * from road_metadata ORDER BY region, road ASC")
                 data = cursor.fetchall()
                 return data
         except Exception as e:
