@@ -65,7 +65,7 @@ def get_data_instance(region: str, road: str):
     speed_limit = road_info['car_speed_limit'] if vehicle_type == 'Car' else road_info['truck_speed_limit']
 
     # Simulate realistic speed variations
-    base_speed_variation = random.uniform(-30, 5)
+    base_speed_variation = random.uniform(-15, 10)
     rush_hour_factor = -10 if is_rush_hour else random.uniform(-5, 0)
     lane_factor = (road_info['lanes'] - lane) * random.uniform(0.5, 1.0)
 

@@ -1,37 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
 import "./average-speed.css";
 import CustomDropdown from "../dropdown";
 
 // Data for the vehicles
-const data = {
-  count: {
-    cars: 200,
-    trucks: 120,
-  },
-  speedingCount: {
-    cars: 55,
-    trucks: 15,
-  },
-  speedLimit: {
-    cars: 100,
-    trucks: 80,
-  },
-  avgSpeed: {
-    cars: 100,
-    trucks: 60,
-  },
-};
+// const data = {
+//   count: {
+//     cars: 200,
+//     trucks: 120,
+//   },
+//   speedingCount: {
+//     cars: 55,
+//     trucks: 15,
+//   },
+//   speedLimit: {
+//     cars: 100,
+//     trucks: 80,
+//   },
+//   avgSpeed: {
+//     cars: 100,
+//     trucks: 60,
+//   },
+// };
 
-function AverageSpeed() {
-  const [selectedVehicle, setSelectedVehicle] = useState("cars");
+function AverageSpeed({ trafficData }) {
+  const [selectedVehicle, setSelectedVehicle] = useState("car");
+
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    if (trafficData && trafficData.result?.average_speed) {
+      console.log("Setting data for average speed...", trafficData.result);
+      setData(trafficData.result.average_speed);
+    }
+  }, [trafficData]);
 
   // Retrieve the dynamic values based on the selected vehicle type.
-  const totalVehicles = data.count[selectedVehicle];
-  const speedingVehicles = data.speedingCount[selectedVehicle];
-  const speedLimit = data.speedLimit[selectedVehicle];
-  const avgSpeed = data.avgSpeed[selectedVehicle];
+  const totalVehicles = data?.count[selectedVehicle] || 0;
+  const speedingVehicles = data?.speedingCount[selectedVehicle] || 0;
+  const speedLimit = data?.speedLimit[selectedVehicle] || 0;
+  const avgSpeed = Number(data?.avgSpeed[selectedVehicle].toFixed(1)) || 0;
 
   // Gauge maximum is set to speed limit + 20.
   const gaugeMax = speedLimit + 20;
@@ -113,8 +122,8 @@ function AverageSpeed() {
 
   // Options for the dropdown
   const vehicleOptions = [
-    { value: "cars", label: "Cars" },
-    { value: "trucks", label: "Trucks" },
+    { value: "car", label: "Cars" },
+    { value: "truck", label: "Trucks" },
   ];
 
   return (

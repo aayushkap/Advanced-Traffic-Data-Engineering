@@ -305,27 +305,16 @@ services:
       retries: 10
 
   doris-init:
-    image: mysql:5.7
+    image: python:3.11-slim
     depends_on:
       doris:
         condition: service_healthy
     networks:
       - confluent
     volumes:
-      - ./doris/init-doris.sql:/init-doris.sql
-    command: >
-      sh -c "
-      while ! mysql -uroot -h doris -P9030 -e 'SHOW BACKENDS;' | grep -q 'true'; do
-        echo 'Waiting for Doris BE to come online...';
-        sleep 5;
-      done;
-      echo 'Doris BE is online.';
-      while ! mysql -uroot -h doris -P9030 -e 'SELECT 1;' > /dev/null 2>&1; do
-        echo 'Waiting for Doris to be ready...';
-        sleep 5;
-      done;
-      mysql -uroot -h doris -P9030 < /init-doris.sql;
-      echo 'Initialization complete.'"
+      - ./data/road_data.json:/road_data.json
+      - ./doris/init_doris.py:/init_doris.py
+    command: ["/bin/sh", "-c", "pip install pymysql && python /init_doris.py"]
 
   # User Services
 
