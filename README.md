@@ -39,8 +39,11 @@
 
 ## Architecture Diagrams
 
-- **Architecture Diagram**: [Architecture Diagram](Project_Architecture.drawio)
-- **Parallelism Diagram**: [Parallelism Diagram](Parallelism_Diagram.drawio)
+- **Architecture Diagram**: 
+![Architecture Diagram](/docs/Project_Architecture.png)
+
+- **Parallelism Diagram**: 
+![Parallelism Diagram](/docs/Parallelism_Diagram.png)
 
 ## How to Run
 
