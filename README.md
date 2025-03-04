@@ -1,102 +1,71 @@
+# Real-Time End-to-End Traffic Data Pipeline
 
-Commands:
+- This project is a demonstration of a real-time end-to-end data pipeline that leverages the Apache ecosystem. The pipeline simulates, ingests, processes, and visualizes traffic data in real-time.
 
-1.  docker-compose up -d --build
+- The entire pipeline is designed for high throughput, scalability, and fault tolerance by leveraging built-in parallelism and concurrency features of Airflow, Kafka, Flink, and Doris.
 
-2. In Doris: http://localhost:8030/
+## Components
 
-"
-CREATE DATABASE app_db;
+1. **Airflow**  
+   - An orchestration tool used for scheduling tasks.  
+   - Simulates traffic data generation in real-time by dynamically creating DAG tasks for each road.  
+   - Uses a Celery executor with each worker configured to run up to 4 tasks concurrently.  
+   - The DAG is configured with `concurrency=4` and `max_active_runs=1`, ensuring that no more than 4 tasks run concurrently and that runs do not overlap.
 
-USE app_db;
+2. **Kafka**  
+   - An event streaming platform that ingests data and allows multiple consumers to process messages in parallel.  
+   - Each road has its own Kafka topic, and each topic is created with **4 partitions**.  
+   - This partitioning allows Kafka to distribute messages across multiple consumer threads, enabling parallel data consumption.
 
-CREATE TABLE traffic_data (
-    region VARCHAR(50), -- Specify the maximum length
-    ts VARCHAR(50),
-    road VARCHAR(50),
-    id VARCHAR(50),
-    direction INT,
-    vehicle_type VARCHAR(50),
-    lane INT,
-    speeding VARCHAR(50),
-    velocity FLOAT,
-    insert_time DATETIME
-)
-DUPLICATE KEY(region, ts, road)
-DISTRIBUTED BY HASH(region) BUCKETS 3
-PROPERTIES (
-    "replication_allocation" = "tag.location.default: 1"
-);
+3. **Flink**  
+   - A stream processing engine that consumes data from Kafka, cleans the data, and writes it to Doris.  
+   - The Flink job is set with a default parallelism of 4, meaning that each operator (source, transformation, sink) runs 4 parallel tasks.  
+   - The Job Manager coordinates the job, while the Task Manager—with 4 task slots—executes the parallel tasks.  
+   - The Kafka source operator consumes data from all topics concurrently, processing messages from multiple partitions in parallel.
 
+4. **Doris**  
+   - A distributed SQL engine optimized for fast OLAP queries.  
+   - Receives data via a JDBC sink that writes in batches.  
+   - The sink is set up with 4 parallel tasks where each task buffers and writes its own batch (up to 1000 records per batch) independently, ensuring high throughput and fault tolerance.
 
-CREATE MATERIALIZED VIEW max_test AS
-SELECT 
-    region,
-    road,
-    COUNT(*) AS total_vehicles, 
-FROM traffic_data
-GROUP BY region, road;
+5. **Dashboard**  
+   - A real-time visualization dashboard for traffic data.  
+   - Built with Apache ECharts and React (Vite), it provides various filters to customize the view.  
+   - Accessible via a web browser at `localhost:5173`.
 
-SELECT region, road, COUNT(*) AS total_vehicles
-FROM traffic_data
-GROUP BY region, road;
-
-SELECT 
-    AVG(TIMESTAMPDIFF(SECOND, ts, insert_time)) AS avg_time_difference
-FROM 
-    traffic_data
-WHERE 
-    insert_time IS NOT NULL ;
-
-SELECT COUNT(*) AS record_count
-FROM traffic_data
-WHERE insert_time >= (
-        SELECT MIN(insert_time) 
-        FROM traffic_data
-    )
-  AND insert_time < (
-        SELECT DATE_ADD(MIN(insert_time), INTERVAL 1 HOUR) 
-        FROM traffic_data
-    );
-
-SELECT insert_time, COUNT(*) AS total_vehicles
-FROM traffic_data
-GROUP BY insert_time
-ORDER BY insert_time desc;
-"
-
-> In Doris, when you create a materialized view (MV), you query the base table, and the Doris query optimizer automatically decides whether to use the materialized view to answer your query. The materialized view itself is not directly queried by name, as Doris abstracts its usage.
-
-3. Submit Doris job: docker compose exec flink-jobmanager flink run -p 4 -py /opt/flink/usr_jobs/doris_traffic_sink.py
+6. **Iceberg & MiniIO Integration**  
+   - Each Kafka topic’s data is subscribed independently, and batching is applied before appending to Iceberg, which uses the MiniIO file system.
 
 
+## Architecture Diagrams
+
+- **Architecture Diagram**: [Architecture Diagram](Project_Architecture.drawio)
+- **Parallelism Diagram**: [Parallelism Diagram](Parallelism_Diagram.drawio)
+
+## How to Run
+
+1. **Run Services:**  
+   Build and run all services using Docker Compose:
+   ```bash
+   docker-compose up -d --build
+    ```
+
+2. **Submit Flink Job:**  
+   Submit the Flink job that writes data to Doris with 4 parallel tasks:
+   ```bash
+   docker compose exec flink-jobmanager flink run -p 4 -py /opt/flink/usr_jobs/doris_traffic_sink.py
+    ```
+
+3. **Verify Airflow:**  
+   Access the Airflow UI at `localhost:8080` and monitor the DAG execution.
+
+4. **Access Dashboard:**
+    Change the directory to `vehicle-dashboard` and run the following commands:
+    ```bash
+    npm install
+    npm run dev
+    ```
+    Access the dashboard on your web browser at `localhost:5173`.
 
 
-
-
-I am trying to create an admin dashboad, with a table that has the schema:
-
-Field	Type	Null	Extra	Default	Key	
-region	varchar(50)	Yes			true
-ts	varchar(50)	Yes			true
-road	varchar(50)	Yes			true
-id	varchar(50)	Yes	NONE		false
-direction	int	Yes	NONE		false
-vehicle_type	varchar(50)	Yes	NONE		false
-lane	int	Yes	NONE		false
-
-I want to display all sorts of information using the above schema, using all sorts of creative visualizations. There can also be filters on the visualizations. Eg: filter vehicle type by all, cars,trucks etc. There are multiple regions and those regions have multiple roads in them.
-
-Sample Data:
-
-egion	ts	road	id	direction	vehicle_type	lane	speeding	velocity	insert_time
-Mecca	2025-01-26 09:25:17	Al_Haram_Road	4dda6812-17ad-4b13-92b8-ef1ad16f9c40	1	Car	1	sp	63	2025-01-26 09:25:19
-Mecca	2025-01-26 09:25:17	Al_Haram_Road	a947dda2-141e-4a38-a721-8dd698c2bf29	0	Truck	1		39	2025-01-26 09:25:18
-Mecca	2025-01-26 09:25:17	Umm_Al_Qura_Road	12796933-d47d-4f0a-a345-d7a9e3097268	0	Car	2		94	2025-01-26 09:25:19
-Mecca	2025-01-26 09:25:17	Umm_Al_Qura_Road	8bfc8e22-23e0-4734-82af-f5c927427c8f	0	Car	4	sp	103	2025-01-26 09:25:18
-Mecca	2025-01-26 09:25:18	Al_Haram_Road	c4d85a41-fbe2-4043-b681-d190196b1601	1	Car	2		39	2025-01-26 09:25:20
-Mecca	2025-01-26 09:25:18	Al_Haram_Road	e41bfc9a-1d8f-48bd-b4ef-72e93450d12b	0	Truck	1		35	2025-01-26 09:25:20
-Mecca	2025-01-26 09:25:18	Umm_Al_Qura_Road	69fded16-14f7-49fc-88fb-2958d3be95b6	0	Car	2	sp	103	2025-01-26 09:25:20
-
-
-Use the given information to design creative and important visualizations and provide sql queries for them. the table is traffic_data. Where relevant , create filters and give the sql for the filters applied as well. 
+Feel free to reach out to me at: `aayushkap321@gmail.com` if you have any issues/suggestions!

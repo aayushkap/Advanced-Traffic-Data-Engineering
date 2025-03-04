@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 from traffic_query_builder import TrafficDataQueryBuilder
 from fastapi.middleware.cors import CORSMiddleware
+import time
+import pymysql
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -129,7 +131,36 @@ def post_process_result(result: dict, road:str) -> dict:
         "average_speed": average_speed_data,
         "lane_utilization": lane_utilization_data
     }
-    
+
+def wait_for_backends(conn):
+    """Wait until at least one Doris backend is active."""
+    print("Waiting for Doris BE to come online...")
+    while True:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SHOW BACKENDS;")
+                results = cursor.fetchall()
+                # Check if any cell in the result contains the text "true"
+                if any("true" in str(col).lower() for row in results for col in row):
+                    print("Doris BE is online.")
+                    break
+        except Exception as e:
+            print("Error checking backends:", e)
+        time.sleep(5)
+
+def wait_for_doris_ready(conn):
+    """Wait until Doris is fully ready by executing a simple query."""
+    print("Waiting for Doris to be ready...")
+    while True:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1;")
+                if cursor.fetchone() is not None:
+                    print("Doris is ready.")
+                    break
+        except Exception as e:
+            print("Error checking Doris readiness:", e)
+        time.sleep(5)
 
 @app.get("/")
 async def root():
@@ -175,4 +206,27 @@ async def metadata():
 
 if __name__ == "__main__":
     import uvicorn
+
+    while True:
+        try:
+            conn = pymysql.connect(
+                host='doris',
+                port=9030,
+                user='root',
+                password='',
+                autocommit=True
+            )
+            print("Connected to Doris.")
+            break
+        except Exception as e:
+            print("Could not connect to Doris, retrying...", e)
+            time.sleep(5)
+    
+    # Wait for active backends and for Doris readiness.
+    wait_for_backends(conn)
+    wait_for_doris_ready(conn)
+    conn.close()
+
+    print("Doris is ready.")
+
     uvicorn.run("api:app", host="0.0.0.0", port=8050, reload=False)

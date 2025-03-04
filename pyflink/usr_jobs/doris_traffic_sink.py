@@ -84,7 +84,7 @@ def configure_doris_sink(sql_dml: str, type_info: Types) -> JdbcSink:
         .with_password("")
         .build(),
         JdbcExecutionOptions.builder()
-        .with_batch_interval_ms(200) # Max time to wait before sending a batch, even if the batch size is not reached
+        .with_batch_interval_ms(500) # Max time to wait before sending a batch, even if the batch size is not reached
         .with_batch_size(1000) # Max number of records to send in a batch
         .with_max_retries(5)
         .build(),

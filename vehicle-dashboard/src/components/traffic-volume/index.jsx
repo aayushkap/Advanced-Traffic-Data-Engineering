@@ -93,7 +93,7 @@ const TrafficVolume = ({ trafficData }) => {
       data: ["Cars", "Trucks", "Total Vehicles", "Total Violations"],
       textStyle: { color: "#FFFFFF" }, // Legend text color
       selected: {
-        "Total Violations": false, // Keep 'Total Violations' legend off by default
+        "Total Violations": true, // Keep 'Total Violations' legend off by default
       },
     },
     xAxis: {
