@@ -37,13 +37,16 @@
    - Each Kafka topic’s data is subscribed independently, and batching is applied before appending to Iceberg, which uses the MiniIO file system.
 
 
-## Architecture Diagrams
+## Diagrams
 
 - **Architecture Diagram**: 
 ![Architecture Diagram](/docs/Project_Architecture.png)
 
 - **Parallelism Diagram**: 
 ![Parallelism Diagram](/docs/Parallelism_Diagram.png)
+
+- **Dashboard UI**
+![Dashboard UI](/docs/Dashboard_UI.png)
 
 ## How to Run
 
