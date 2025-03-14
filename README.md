@@ -74,4 +74,4 @@
     Access the dashboard on your web browser at `localhost:5173`.
 
 
-Feel free to reach out to me at: `aayushkap321@gmail.com` if you have any issues/suggestions!
+Feel free to reach out to me at: `aayushkap@outlook.com` if you have any issues/suggestions!
